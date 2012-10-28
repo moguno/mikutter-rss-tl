@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
- 
+
+require 'rubygems'
+require 'feed-normalizer'
 require 'date'
-require 'rss'
+require 'open-uri'
 
 
 # IDからシンボルを作る
@@ -111,14 +113,14 @@ class Satoshi
       end
  
       # RSSを読み込む
-      rss = RSS::Parser.parse(@user_config[sym("rss_url", @id)], false)
+      feed = FeedNormalizer::FeedNormalizer.parse(open(@user_config[sym("rss_url", @id)]))
 
-      items = rss.items.select { |item|
+      entries = feed.entries.select { |entry|
         result_tmp = false
 
         if @last_result_time == nil then
           result_tmp = true
-        elsif item.date != nil && @last_result_time < item.date then
+        elsif entry.last_updated != nil && @last_result_time < entry.last_updated then
           result_tmp = true
         else
           result_tmp = false
@@ -127,30 +129,33 @@ class Satoshi
         result_tmp
       }
   
-      if items.size == 0 then
+      if entries.size == 0 then
         return true
       end
   
-      msgs = items.map { |item| 
-        msg = Message.new(:message => (item.title + "\n" + item.link), :system => true)
+      msgs = entries.map { |entry| 
+        # どうせタイムライン表示時に自動展開されちゃうので短縮はしない
+        # links = MessageConverters.shrink_url([item.link.to_s])
 
-        msg[:created] = item.date
+        msg = Message.new(:message => (entry.title.force_encoding("utf-8") + " " + entry.url.force_encoding("utf-8")), :system => true)
 
-        if defined?(rss.channel.image.url) then
-          image_url = rss.channel.image.url
-        elsif defined?(rss.channel.image.resource) then
-          image_url = rss.channel.image.resource
-        else
+        msg[:created] = entry.last_updated
+
+        if feed.image.empty? then
           image_url = MUI::Skin.get("icon.png")
+        else
+          image_url = feed.image
         end
+
+        title = feed.title.force_encoding("utf-8")
 
         msg[:user] = User.new(:id => -3939,
                               :idname => "RSS",
-                              :name => rss.channel.title,
+                              :name => title,
                               :profile_image_url => image_url)
 
-        if item.date != nil && (@last_result_time == nil || @last_result_time < item.date) then
-          @last_result_time = item.date
+        if entry.last_updated != nil && (@last_result_time == nil || @last_result_time < entry.last_updated) then
+          @last_result_time = entry.last_updated
         end
 
         msg
