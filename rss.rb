@@ -189,10 +189,8 @@ Plugin.create :rss_reader do
       satoshi.setting(self)
     }
  
-    boolean("日本語のツイートのみ", :rss_japanese)
     adjustment("ポーリング間隔（秒）", :rss_period, 1, 6000)
     adjustment("混ぜ込み間隔（秒）", :rss_insert_period, 1, 600)
-    input("プレフィックス", :rss_prefix)
 
     settings "カスタムスタイル" do
       boolean("カスタムスタイルを使う", :rss_custom_style)
