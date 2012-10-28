@@ -213,16 +213,18 @@ Plugin.create :rss_reader do
 
 
   # 更新用ループ
-  def search_loop(service)
-    Reserver.new(UserConfig[:rss_period]){
+  def search_loop(service, first_period, next_period)
+    Reserver.new(first_period){
       search_url(service) 
-      search_loop service
+
+      search_loop(service, next_period, next_period)
     } 
   end
   
+
   # 混ぜ込みループ
-  def insert_loop(service)
-    Reserver.new(UserConfig[:rss_insert_period]){
+  def insert_loop(service, first_period, next_period)
+    Reserver.new(first_period){
       begin
         fetch_order = $satoshis.select(){ |a| a != nil }.sort() { |a, b|
           a.last_fetch_time <=> b.last_fetch_time
@@ -257,12 +259,12 @@ Plugin.create :rss_reader do
         puts e.backtrace
 
       ensure
-        insert_loop service
+        insert_loop(service, next_period, next_period)
 
       end
     } 
   end
-  
+
 
   # 検索
   def search_url(service)
@@ -309,10 +311,11 @@ Plugin.create :rss_reader do
     $satoshis.each {|satoshi|
       satoshi.init_user_config
     }
-  
-    search_loop service
-    insert_loop service
+
+    search_loop(service, 1, UserConfig[:rss_period])
+    insert_loop(service, 1, UserConfig[:rss_insert_period])
   end
+
 
   # 背景色決定
   filter_message_background_color do |message, color|
