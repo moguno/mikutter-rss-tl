@@ -14,7 +14,7 @@ end
 
 # 検索クラス
 class Satoshi
-  attr_reader :last_fetch_time, :id
+  attr_reader :last_fetch_time
 
 
   # コンストラクタ
@@ -30,20 +30,37 @@ class Satoshi
   end
 
 
+  # インスタンス毎のコンフィグを読み込む
+  def [](key)
+    @user_config[sym(key.to_s, @id)]
+  end
+
+
   # コンフィグの初期化
   def init_user_config()
     @user_config[sym("rss_url", @id)] ||= ""
     @user_config[sym("rss_reverse", @id)] ||= false
+
+    @user_config[sym("rss_custom_style", @id)] ||= false
+    @user_config[sym("rss_font_face", @id)] ||= 'Sans 10'
+    @user_config[sym("rss_font_color", @id)] ||= [0, 0, 0]
+    @user_config[sym("rss_background_color", @id)] ||= [65535, 65535, 65535]
   end
 
 
   # 設定画面の生成
-  def setting(plugin)
+  def setting(plugin, prefix)
     id = @id
 
-    plugin.settings "フィード" + id.to_s do
+    plugin.settings prefix + "フィード" + id.to_s do
       input("URL", sym("rss_url", id))
       boolean("新しい記事を優先する", sym("rss_reverse", id))
+
+      settings "カスタムスタイル" do
+        boolean("カスタムスタイルを使う", sym("rss_custom_style", id))
+        fontcolor("フォント", sym("rss_font_face", id), sym("rss_font_color", id))
+        color("背景色", sym("rss_background_color", id))
+      end
     end
   end
 
@@ -81,6 +98,12 @@ class Satoshi
     # puts @urls.to_s + @result_queue.size.to_s
 
     return msg
+  end
+
+
+  # メッセージ保有してる？
+  def empty?()
+   @result_queue.empty?
   end
 
 
@@ -183,29 +206,11 @@ Plugin.create :rss_reader do
   # グローバル変数の初期化
   $satoshis = []
 
-  # 設定画面
-  settings "RSS混ぜ込み" do
-    $satoshis.each {|satoshi|
-      satoshi.setting(self)
-    }
- 
-    adjustment("ポーリング間隔（秒）", :rss_period, 1, 6000)
-    adjustment("混ぜ込み間隔（秒）", :rss_insert_period, 1, 600)
-
-    settings "カスタムスタイル" do
-      boolean("カスタムスタイルを使う", :rss_custom_style)
-      fontcolor("フォント", :rss_font_face, :rss_font_color)
-      color("背景色", :rss_background_color)
-    end
-  end 
-
 
   # カスタムスタイルを選択する
   def choice_style(message, key, default)
-    if !UserConfig[:rss_custom_style] then
-      default
-    elsif message[:rss] then
-      UserConfig[key]
+    if message[:rss] != nil && message[:rss][:rss_custom_style] then
+      message[:rss][key]
     else
       default
     end
@@ -226,23 +231,19 @@ Plugin.create :rss_reader do
   def insert_loop(service, first_period, next_period)
     Reserver.new(first_period){
       begin
-        fetch_order = $satoshis.select(){ |a| a != nil }.sort() { |a, b|
+
+        # 混ぜ込むべきインスタンスを取得
+        target_satoshi = $satoshis.select(){ |a| a != nil }.sort() { |a, b|
           a.last_fetch_time <=> b.last_fetch_time
+        }.find { |satoshi|
+          !satoshi.empty?
         }
 
-        msg = nil
+        if target_satoshi != nil then
+          msg = target_satoshi.fetch()
 
-        fetch_order.each {|satoshi|
-          msg = satoshi.fetch()
-
-          if msg != nil then
-            break
-          end
-        }
-
-        if msg != nil then
           msg[:modified] = Time.now
-          msg[:rss] = true
+          msg[:rss] = target_satoshi
   
           # タイムラインに登録
           if defined?(timeline)
@@ -273,7 +274,7 @@ Plugin.create :rss_reader do
         result = satoshi.search()
 
         if !result then
-          msg = Message.new(:message => "フィードの取得に失敗しました。 " + UserConfig[sym("rss_url", satoshi.id)], :system => true)
+          msg = Message.new(:message => "フィードの取得に失敗しました。 " + satoshi[:rss_url], :system => true)
 
           msg[:user] = User.new(:id => -3939,
                                 :idname => "RSS",
@@ -294,6 +295,7 @@ Plugin.create :rss_reader do
     end
   end
 
+
   # 起動時処理
   on_boot do |service|
     (0..5 - 1).each {|i|
@@ -303,13 +305,23 @@ Plugin.create :rss_reader do
     # コンフィグの初期化
     UserConfig[:rss_period] ||= 60
     UserConfig[:rss_insert_period] ||= 3
-    UserConfig[:rss_background_color] ||= [65535, 65535, 65535]
-    UserConfig[:rss_custom_style] ||= false
-    UserConfig[:rss_font_face] ||= 'Sans 10'
-    UserConfig[:rss_font_color] ||= [0, 0, 0]
 
     $satoshis.each {|satoshi|
       satoshi.init_user_config
+    }
+
+    # 設定画面
+    settings "RSS混ぜ込み" do
+      adjustment("ポーリング間隔（秒）", :rss_period, 1, 6000)
+      adjustment("混ぜ込み間隔（秒）", :rss_insert_period, 1, 600)
+    end 
+
+    $satoshis.each {|satoshi|
+      if satoshi.equal?($satoshis[-1]) then
+        satoshi.setting(self, "┗")
+      else
+        satoshi.setting(self, "┣")
+      end
     }
 
     search_loop(service, 1, UserConfig[:rss_period])
