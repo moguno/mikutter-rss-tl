@@ -233,11 +233,9 @@ Plugin.create :rss_reader do
       begin
 
         # 混ぜ込むべきインスタンスを取得
-        target_satoshi = $satoshis.select(){ |a| a != nil }.sort() { |a, b|
-          a.last_fetch_time <=> b.last_fetch_time
-        }.find { |satoshi|
-          !satoshi.empty?
-        }
+        target_satoshi = $satoshis.select { |a| a != nil }
+                                  .sort { |a, b| a.last_fetch_time <=> b.last_fetch_time }
+                                  .find { |satoshi| !satoshi.empty?  }
 
         if target_satoshi != nil then
           msg = target_satoshi.fetch()
