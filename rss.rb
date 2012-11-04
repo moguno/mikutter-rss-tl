@@ -6,6 +6,12 @@ require 'date'
 require 'open-uri'
 
 
+# IDからシンボルを作る
+def sym(base, id)
+  (base + id.to_s).to_sym
+end
+
+
 # 検索クラス
 class Satoshi
   attr_reader :last_fetch_time
@@ -21,12 +27,6 @@ class Satoshi
     @last_fetch_time = Time.now
     @user_config = user_config
     @id = id
-  end
-
-
-  # IDからシンボルを作る
-  def sym(base, id)
-    (base + id.to_s).to_sym
   end
 
 
