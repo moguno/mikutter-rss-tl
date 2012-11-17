@@ -371,8 +371,6 @@ Plugin.create :rss_reader do
 
   # リンクの処理
   Message::Entity.addlinkrule(:rss, /\[記事を読む\]/){ |segment|
-    p segment[:message][:rss_feed_url]
-
     if segment[:message][:rss_feed_url] != nil then
       Gtk::TimeLine.openurl(segment[:message][:rss_feed_url])
     end
