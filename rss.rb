@@ -160,8 +160,8 @@ class Satoshi
         # どうせタイムライン表示時に自動展開されちゃうので短縮はしない
         # links = MessageConverters.shrink_url([item.link.to_s])
 
-        msg = Message.new(:message => (entry.title.force_encoding("utf-8") + " " + entry.url.force_encoding("utf-8")), :system => true)
-
+        msg = Message.new(:message => (entry.title.force_encoding("utf-8") + "\n\n[記事を読む]"), :system => true)
+        msg[:rss_feed_url] = entry.url.force_encoding("utf-8")
         msg[:created] = entry.last_updated
 
         if feed.image.empty? then
@@ -233,11 +233,9 @@ Plugin.create :rss_reader do
       begin
 
         # 混ぜ込むべきインスタンスを取得
-        target_satoshi = $satoshis.select(){ |a| a != nil }.sort() { |a, b|
-          a.last_fetch_time <=> b.last_fetch_time
-        }.find { |satoshi|
-          !satoshi.empty?
-        }
+        target_satoshi = $satoshis.select { |a| a != nil }
+                                  .sort { |a, b| a.last_fetch_time <=> b.last_fetch_time }
+                                  .find { |satoshi| !satoshi.empty?  }
 
         if target_satoshi != nil then
           msg = target_satoshi.fetch()
@@ -369,4 +367,13 @@ Plugin.create :rss_reader do
       puts e.backtrace
     end
   end
+
+
+  # リンクの処理
+  Message::Entity.addlinkrule(:rss, /\[記事を読む\]/){ |segment|
+    if segment[:message][:rss_feed_url] != nil then
+      Gtk::TimeLine.openurl(segment[:message][:rss_feed_url])
+    end
+  }
+
 end
