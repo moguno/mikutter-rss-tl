@@ -218,50 +218,48 @@ Plugin.create :rss_reader do
 
 
   # 更新用ループ
-  def search_loop(service, first_period, next_period)
-    Reserver.new(first_period){
-      search_url(service) 
+  def search_loop(service)
+    search_url(service) 
 
-      search_loop(service, next_period, next_period)
+    Reserver.new(UserConfig[:rss_period]){
+      search_loop(service)
     } 
   end
   
 
   # 混ぜ込みループ
-  def insert_loop(service, first_period, next_period)
-    Reserver.new(first_period){
-      begin
+  def insert_loop(service)
+    begin
 
-        # 混ぜ込むべきインスタンスを取得
-        target_satoshi = $satoshis.select { |a| a != nil }
-                                  .sort { |a, b| a.last_fetch_time <=> b.last_fetch_time }
-                                  .find { |satoshi| !satoshi.empty?  }
+      # 混ぜ込むべきインスタンスを取得
+      target_satoshi = $satoshis.select { |a| a != nil }
+                                .sort { |a, b| a.last_fetch_time <=> b.last_fetch_time }
+                                .find { |satoshi| !satoshi.empty?  }
 
-        if target_satoshi != nil then
-          msg = target_satoshi.fetch()
+      if target_satoshi != nil then
+        msg = target_satoshi.fetch()
 
-          msg[:modified] = Time.now
-          msg[:rss] = target_satoshi
+        msg[:modified] = Time.now
+        msg[:rss] = target_satoshi
   
-          # タイムラインに登録
-          if defined?(timeline)
-            timeline(:home_timeline) << [msg]
-          else
-            Plugin.call(:update, service, [msg])
-          end
-
-          # puts "last message :" + $result_queue.size.to_s
+        # タイムラインに登録
+        if defined?(timeline)
+          timeline(:home_timeline) << [msg]
+        else
+          Plugin.call(:update, service, [msg])
         end
 
-      rescue => e
-        puts e
-        puts e.backtrace
-
-      ensure
-        insert_loop(service, next_period, next_period)
-
+        # puts "last message :" + $result_queue.size.to_s
       end
-    } 
+
+      Reserver.new(UserConfig[:rss_insert_period]){
+        insert_loop(service)
+      } 
+
+    rescue => e
+      puts e
+      puts e.backtrace
+    end
   end
 
 
@@ -322,8 +320,8 @@ Plugin.create :rss_reader do
       end
     }
 
-    search_loop(service, 1, UserConfig[:rss_period])
-    insert_loop(service, 1, UserConfig[:rss_insert_period])
+    search_loop(service)
+    insert_loop(service)
   end
 
 
