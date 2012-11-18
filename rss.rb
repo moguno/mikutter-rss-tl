@@ -45,6 +45,7 @@ class Satoshi
     @user_config[sym("rss_font_face", @id)] ||= 'Sans 10'
     @user_config[sym("rss_font_color", @id)] ||= [0, 0, 0]
     @user_config[sym("rss_background_color", @id)] ||= [65535, 65535, 65535]
+    @user_config[sym("rss_loop", @id)] ||= false
   end
 
 
@@ -55,26 +56,13 @@ class Satoshi
     plugin.settings prefix + "フィード" + id.to_s do
       input("URL", sym("rss_url", id))
       boolean("新しい記事を優先する", sym("rss_reverse", id))
+      boolean("ループさせる", sym("rss_loop", id))
 
       settings "カスタムスタイル" do
         boolean("カスタムスタイルを使う", sym("rss_custom_style", id))
         fontcolor("フォント", sym("rss_font_face", id), sym("rss_font_color", id))
         color("背景色", sym("rss_background_color", id))
       end
-    end
-  end
-
-
-  # 日時文字列をパースする
-  def parse_time(str)
-    begin
-      if str.class == Time then
-        str
-      else
-        Time.parse(str)
-      end
-    rescue
-      nil
     end
   end
 
@@ -93,6 +81,11 @@ class Satoshi
 
     if msg != nil then
       @last_fetch_time = Time.now
+    else
+      # ループさせる
+      if @user_config[sym("rss_loop", @id)] then
+        @last_result_time = nil
+      end
     end 
 
     # puts @urls.to_s + @result_queue.size.to_s
@@ -202,7 +195,7 @@ class Satoshi
 end
 
 
-Plugin.create :rss_reader do 
+Plugin.create :rss do 
   # グローバル変数の初期化
   $satoshis = []
 
