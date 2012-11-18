@@ -81,11 +81,6 @@ class Satoshi
 
     if msg != nil then
       @last_fetch_time = Time.now
-    else
-      # ループさせる
-      if @user_config[sym("rss_loop", @id)] then
-        @last_result_time = nil
-      end
     end 
 
     # puts @urls.to_s + @result_queue.size.to_s
@@ -122,6 +117,11 @@ class Satoshi
           @result_queue.clear
           @last_result_time = nil
         }
+      end
+
+      # ループさせる
+      if @user_config[sym("rss_loop", @id)] && empty? then
+        @last_result_time = nil
       end
 
       if @user_config[sym("rss_url", @id)].empty? then
