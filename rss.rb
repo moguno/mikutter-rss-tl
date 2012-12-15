@@ -170,7 +170,7 @@ class Satoshi
         # どうせタイムライン表示時に自動展開されちゃうので短縮はしない
         # links = MessageConverters.shrink_url([item.link.to_s])
 
-        msg = Message.new(:message => (entry.title.force_encoding("utf-8") + "\n\n[記事を読む]"), :system => true)
+        msg = Message.new(:message => ("【" + feed.title.force_encoding("utf-8") + "】\n" + entry.title.force_encoding("utf-8") + "\n\n[記事を読む]"), :system => true)
         msg[:rss_feed_url] = entry.url.force_encoding("utf-8")
         msg[:created] = entry.last_updated
 
