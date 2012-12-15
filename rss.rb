@@ -16,6 +16,17 @@ end
 class Satoshi
   attr_reader :last_fetch_time
 
+  ICON_COLORS = {
+    :red => ["レッド", File.dirname(__FILE__) + "/red-icon-128.png"],
+    :blue => ["ブルー", File.dirname(__FILE__) + "/blue-icon-128.png"],
+    :black => ["ブラック", File.dirname(__FILE__) + "/black-icon-128.png"],
+    :bronze => ["ブロンズ", File.dirname(__FILE__) + "/bronze-icon-128.png"],
+    :green => ["グリーン", File.dirname(__FILE__) + "/green-icon-128.png"],
+    :lightblue => ["ライトブルー", File.dirname(__FILE__) + "/lightblue-icon-128.png"],
+    :mistred => ["ミストレッド", File.dirname(__FILE__) + "/mistred-icon-128.png"],
+    :purple => ["パープル", File.dirname(__FILE__) + "/purple-icon-128.png"],
+    :mikutter => ["みくったーちゃん", MUI::Skin.get("icon.png")],
+  }
 
   # コンストラクタ
   def initialize(service, user_config, id)
@@ -46,6 +57,7 @@ class Satoshi
     @user_config[sym("rss_font_color", @id)] ||= [0, 0, 0]
     @user_config[sym("rss_background_color", @id)] ||= [65535, 65535, 65535]
     @user_config[sym("rss_loop", @id)] ||= false
+    @user_config[sym("rss_icon", @id)] ||= :red
   end
 
 
@@ -57,6 +69,11 @@ class Satoshi
       input("URL", sym("rss_url", id))
       boolean("新しい記事を優先する", sym("rss_reverse", id))
       boolean("ループさせる", sym("rss_loop", id))
+
+      select("アイコンの色", sym("rss_icon", id), ICON_COLORS.inject({}){ |result, kv|
+        result[kv[0]] = kv[1][0] 
+        result
+      })
 
       settings "カスタムスタイル" do
         boolean("カスタムスタイルを使う", sym("rss_custom_style", id))
@@ -153,12 +170,12 @@ class Satoshi
         # どうせタイムライン表示時に自動展開されちゃうので短縮はしない
         # links = MessageConverters.shrink_url([item.link.to_s])
 
-        msg = Message.new(:message => (entry.title.force_encoding("utf-8") + "\n\n[記事を読む]"), :system => true)
+        msg = Message.new(:message => ("【" + feed.title.force_encoding("utf-8") + "】\n" + entry.title.force_encoding("utf-8") + "\n\n[記事を読む]"), :system => true)
         msg[:rss_feed_url] = entry.url.force_encoding("utf-8")
         msg[:created] = entry.last_updated
 
         if feed.image.empty? then
-          image_url = MUI::Skin.get("icon.png")
+          image_url = ICON_COLORS[@user_config[sym("rss_icon", @id)]][1]
         else
           image_url = feed.image
         end
