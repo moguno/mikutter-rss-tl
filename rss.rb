@@ -148,10 +148,14 @@ class Satoshi
       # RSSを読み込む
       feed = FeedNormalizer::FeedNormalizer.parse(open(@user_config[sym("rss_url", @id)]))
 
+      drop_time = Time.now.to_i - (24 * 60 * 60 * @user_config["rss_drop"].to_i)
+
       entries = feed.entries.select { |entry|
         result_tmp = false
 
-        if @last_result_time == nil then
+        if entry.last_updated != nil && entry.last_updated.to_i < drop_time then
+            next
+        elsif @last_result_time == nil then
           result_tmp = true
         elsif entry.last_updated != nil && @last_result_time < entry.last_updated then
           result_tmp = true
@@ -311,6 +315,7 @@ Plugin.create :rss do
     # コンフィグの初期化
     UserConfig[:rss_period] ||= 60
     UserConfig[:rss_insert_period] ||= 3
+    UserConfig[:rss_drop] ||= 7
 
     $satoshis.each {|satoshi|
       satoshi.init_user_config
@@ -320,6 +325,7 @@ Plugin.create :rss do
     settings "RSS混ぜ込み" do
       adjustment("ポーリング間隔（秒）", :rss_period, 1, 6000)
       adjustment("混ぜ込み間隔（秒）", :rss_insert_period, 1, 600)
+      adjustment("一定期間より前のフィードは流さない（日）", :rss_drop, 1, 365)
     end 
 
     $satoshis.each {|satoshi|
