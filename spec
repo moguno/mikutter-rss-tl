@@ -1,5 +1,5 @@
 ---
-slug: :rss
+slug: :mikutter-rss-tl
 depends:
   mikutter: 0.2.2.1264
   plugin:
