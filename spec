@@ -6,7 +6,7 @@ depends:
   - settings
   - gui
   - gtk
-version: 0.6.0
+version: 0.6.1
 author: moguno
 name: mikutter RSS TL
 description: ホームタイムラインにRSSフィードを混ぜ込みます。
